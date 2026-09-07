@@ -1,0 +1,18 @@
+# Core
+google-genai>=2.19.0
+chromadb==0.6.3
+sentence-transformers>=2.2.0
+python-dotenv>=1.0.0
+
+# Data
+rouge-score>=0.1.2
+
+# Nonverbal Analysis (선택)
+openai-whisper>=20231117       # 음성 STT
+deepface>=0.0.93               # 표정 분석
+mediapipe>=0.10.0              # 고개/자세 분석
+librosa>=0.10.0                # 음성 특징 추출
+crepe>=0.0.13                  # 음성 피치
+
+# Optional
+openai>=2.0.0                  # LLM 비교 실험용

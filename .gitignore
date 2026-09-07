@@ -1,0 +1,24 @@
+# API 키
+.env
+
+# ChromaDB (재생성 가능)
+chroma_db/
+
+# 영상/음성 원본 (용량 + 저작권)
+*.mp4
+*.wav
+*.mp3
+*.avi
+
+# Python 캐시
+__pycache__/
+*.pyc
+*.pyo
+.ipynb_checkpoints/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# 임시 노트북
+Untitled*.ipynb
