@@ -123,6 +123,7 @@ out = {
         for cfg, qs in retrieval_results.items()
     }
 }
-OUT_PATH = Path(r'C:\Users\82105\AppData\Local\Temp\claude\c--python\e53b1ec6-7e8d-470a-8f40-e105c3bb1978\scratchpad\chunk_experiment_result.json')
+OUT_PATH = Path(__file__).parent / 'outputs' / 'chunk_experiment_result.json'
+OUT_PATH.parent.mkdir(parents=True, exist_ok=True)
 OUT_PATH.write_text(json.dumps(out, ensure_ascii=False, indent=2), encoding='utf-8')
 print(f'\n결과 저장: {OUT_PATH}')

@@ -4,6 +4,9 @@
 # ChromaDB (재생성 가능)
 chroma_db/
 
+# 실험 결과 출력물 (재생성 가능)
+outputs/
+
 # 영상/음성 원본 (용량 + 저작권)
 *.mp4
 *.wav
