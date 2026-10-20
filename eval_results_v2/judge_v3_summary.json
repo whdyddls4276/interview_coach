@@ -1,0 +1,33 @@
+{
+ "judge_model": "claude-sonnet-4-6",
+ "items": 6,
+ "key_points": 16,
+ "versions": {
+  "v1": {
+   "key_point_recall": 0.521,
+   "verdict_match": "2.0/6",
+   "unsupported": "0.0/6",
+   "actionability_avg": 3.42,
+   "judge_self_agreement": {
+    "coverage_same": "6/6",
+    "verdict_same": "6/6"
+   }
+  },
+  "v2": {
+   "key_point_recall": 0.535,
+   "verdict_match": "2.0/6",
+   "unsupported": "0.0/6",
+   "actionability_avg": 3,
+   "judge_self_agreement": {
+    "coverage_same": "5/6",
+    "verdict_same": "4/6"
+   }
+  }
+ },
+ "usage": {
+  "input": 51958,
+  "output": 5029,
+  "calls": 24
+ },
+ "cost_usd_est": 0.231
+}

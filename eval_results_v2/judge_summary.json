@@ -1,0 +1,28 @@
+{
+ "judge_model": "claude-sonnet-4-6",
+ "items": 6,
+ "retrieval_precision": {
+  "v1": "14/24",
+  "v2": "10/24"
+ },
+ "uses_reference_avg_1to5": {
+  "v1": 3.83,
+  "v2": 3.33
+ },
+ "unsupported_count": {
+  "v1": "0/6",
+  "v2": "0/6"
+ },
+ "pairwise_closer_to_coach": {
+  "v2_wins": 1,
+  "v1_wins": 1,
+  "tie": 1,
+  "inconsistent_order": 3
+ },
+ "usage": {
+  "input": 97951,
+  "output": 8686,
+  "calls": 36
+ },
+ "cost_usd_est": 0.424
+}

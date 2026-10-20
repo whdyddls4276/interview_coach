@@ -93,6 +93,24 @@ def eval_retrieval():
 
 
 # ── 생성 평가 ─────────────────────────────────────────────────
+AF_MARK = re.compile(r'^\ufeff?\s*([AF])\.?\s*$')
+ANSWER_LABEL = re.compile(r'^\ufeff?\s*답변\s*\d+\.')   # "답변 1. 전체적 총평/…"처럼 평가가 담긴 소제목
+
+
+def answers_only(text: str) -> str:
+    """6~10 인터뷰 파일은 A.(지원자 답변)와 F.(코치 피드백) 블록이 번갈아 있다 → A 블록만 남긴다
+    (전체를 답변으로 읽으면 정답인 코치 피드백이 입력에 섞인다 — 2026-10-20 발견)"""
+    out, keep = [], True
+    for line in text.splitlines():
+        m = AF_MARK.match(line)
+        if m:
+            keep = m.group(1) == 'A'
+            continue
+        if keep and not ANSWER_LABEL.match(line):
+            out.append(line)
+    return '\n'.join(out).strip()
+
+
 def load_pairs():
     FB = BASE / 'data' / 'feedback_data'
     pairs = []
@@ -110,7 +128,7 @@ def load_pairs():
             continue
         fb = '\n\n'.join(f.read_text(encoding='utf-8').strip() for f in sorted(td.glob(f'{n.group(1)}_[0-9]*.txt')))
         pairs.append({'id': f'6~10/{n.group(1)}', 'video': f'6~10/{n.group(1)}',
-                      'interview': iv.read_text(encoding='utf-8').strip(), 'feedback': fb})
+                      'interview': answers_only(iv.read_text(encoding='utf-8')), 'feedback': fb})
     return [p for p in pairs if p['interview'] and p['feedback']]
 
 
