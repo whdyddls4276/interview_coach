@@ -1,0 +1,22 @@
+{
+ "coach": {
+  "heading_or_bullet_lines": 0.0,
+  "bold": 0.0,
+  "colloquial_end": 0.68,
+  "chars": 605.83
+ },
+ "v1": {
+  "heading_or_bullet_lines": 0.0,
+  "bold": 0.0,
+  "colloquial_end": 0.1,
+  "chars": 869.5,
+  "direction_match": "4/6"
+ },
+ "v2": {
+  "heading_or_bullet_lines": 0.0,
+  "bold": 0.0,
+  "colloquial_end": 0.44,
+  "chars": 604.33,
+  "direction_match": "3/6"
+ }
+}
