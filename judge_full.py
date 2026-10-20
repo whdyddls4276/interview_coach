@@ -15,7 +15,7 @@ from judge_v2 import JUDGE_MODEL, PRICE_IN, PRICE_OUT, SYSTEM
 from judge_v3 import RUBRIC
 
 FULL = OUT / 'full'
-VERSIONS = ('v1', 'v2', 'v3', 'v4')   # v4 = v3 입력 + v1 프롬프트 (eval_v4.py)
+VERSIONS = ('v1', 'v2', 'v3', 'v4', 'v5')   # v4 = v3 입력 + v1 프롬프트 (eval_v4.py) / v5 = v4 + Gemini 임베딩 검색 (eval_v5.py)
 lock = threading.Lock()
 
 
@@ -109,7 +109,7 @@ def main():
                                  'judge_two_runs_same': {'coverage': f'{same_cov}/{len(keys)}', 'verdict': f'{same_ver}/{len(keys)}'}}
         for k, x in zip(keys, rec):
             per_item.setdefault(k, {})[ver] = round(x, 3)
-    for a, b in (('v2', 'v1'), ('v3', 'v1'), ('v3', 'v2'), ('v4', 'v1'), ('v4', 'v3')):
+    for a, b in (('v2', 'v1'), ('v3', 'v1'), ('v3', 'v2'), ('v4', 'v1'), ('v4', 'v3'), ('v5', 'v4'), ('v5', 'v1')):
         d = [per_item[k][a] - per_item[k][b] for k in keys]
         summ[f'{a}_vs_{b}_recall_per_pair'] = {'better': sum(x > 1e-9 for x in d), 'same': sum(abs(x) <= 1e-9 for x in d), 'worse': sum(x < -1e-9 for x in d)}
     summ['per_pair_recall'] = per_item

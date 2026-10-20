@@ -29,3 +29,6 @@ Untitled*.ipynb
 # 평가 실행 로그
 eval_results_v2/*.log
 eval_results_v2/video_demo_*.json
+
+# 임베딩 캐시 (embed_compare.py가 다시 만듦, 약 20MB)
+eval_results_v2/embed/

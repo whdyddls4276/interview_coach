@@ -1,0 +1,49 @@
+{
+ "judge_model": "claude-sonnet-4-6",
+ "pairs": 30,
+ "versions": {
+  "v1": {
+   "fabricated_pairs": "10.5/30",
+   "hypothetical_example_pairs": "16.5/30",
+   "two_runs_same_fabricated": "27/30",
+   "quotes_not_found_dropped": "0/65"
+  },
+  "v2": {
+   "fabricated_pairs": "11.5/30",
+   "hypothetical_example_pairs": "11.0/30",
+   "two_runs_same_fabricated": "27/30",
+   "quotes_not_found_dropped": "1/55"
+  },
+  "v3": {
+   "fabricated_pairs": "11.5/30",
+   "hypothetical_example_pairs": "11.0/30",
+   "two_runs_same_fabricated": "27/30",
+   "quotes_not_found_dropped": "0/45"
+  },
+  "v4": {
+   "fabricated_pairs": "6.5/30",
+   "hypothetical_example_pairs": "18.0/30",
+   "two_runs_same_fabricated": "29/30",
+   "quotes_not_found_dropped": "3/69"
+  },
+  "v5": {
+   "fabricated_pairs": "10.0/30",
+   "hypothetical_example_pairs": "15.5/30",
+   "two_runs_same_fabricated": "26/30",
+   "quotes_not_found_dropped": "0/59"
+  }
+ },
+ "old_unsupported_judge_full": {
+  "v1": "1.5/31",
+  "v2": "2.0/31",
+  "v3": "2.5/31",
+  "v4": "3.5/31",
+  "v5": "0.5/31"
+ },
+ "usage": {
+  "input": 10140,
+  "output": 811,
+  "calls": 4
+ },
+ "cost_usd_est": 0.043
+}
