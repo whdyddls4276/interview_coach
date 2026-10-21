@@ -1,51 +1,112 @@
-# 🎯 면접 코치 AI — 이형 스타일 피드백 시스템
+# 🎯 AI 면접 코칭 피드백 서비스 — 코칭 강의를 근거로 붙이는 RAG
 
 <p align="center">
   <img src="https://img.shields.io/badge/Python-3.11-blue?logo=python" />
-  <img src="https://img.shields.io/badge/Gemini-3.1_Pro-orange?logo=google" />
-  <img src="https://img.shields.io/badge/ChromaDB-0.6.3-green" />
-  <img src="https://img.shields.io/badge/RAG_+_Few--Shot-purple" />
-  <img src="https://img.shields.io/badge/Multimodal-Video-red" />
+  <img src="https://img.shields.io/badge/STT-Whisper-black" />
+  <img src="https://img.shields.io/badge/LLM-Gemini_3.5_Flash-orange?logo=google" />
+  <img src="https://img.shields.io/badge/Embedding-gemini--embedding--001-orange" />
+  <img src="https://img.shields.io/badge/ChromaDB-1.5-green" />
+  <img src="https://img.shields.io/badge/Eval-LLM--as--judge-purple" />
 </p>
 
-> **"면접왕 이형"** 채널의 면접 노하우를 학습한 AI가
-> 직설적이고 구체적인 면접 피드백을 생성합니다.
-> **면접 영상을 넣으면 답변 내용 + 비언어적 태도를 함께 분석합니다.**
+> 면접 영상(또는 답변 텍스트)을 넣으면, 유튜브 면접 코칭 채널 **"면접왕 이형"** 의 강의에서 근거를 찾아 붙이고
+> 영상의 시간대별(`[MM:SS]`)로 코치의 기준에 맞춘 피드백을 줍니다.
+>
+> SK플래닛 T아카데미 ASAC 과정 프로젝트(2026.02~03)로 시작해, 과정 후 코드로 다시 구현하고 실제 코치 피드백을 정답으로 평가·개선했습니다 (2026.08~10).
+> **최종 버전: `07_feedback_v3.ipynb` (v5)**
 
 ---
 
-## 💡 프로젝트 소개
+## 💡 한눈에 보기
 
-취업 준비생이 면접 답변을 **텍스트 또는 영상**으로 입력하면, AI가 대기업 인사담당자 출신 면접 코치 '이형' 스타일로 피드백을 제공합니다.
+<p align="center"><img src="docs/service_v5.png" width="820" /></p>
 
-- 단순한 "잘했어요/못했어요"가 아닌 **왜 좋은지/나쁜지** 면접관 시각으로 분석
-- **영상 입력 시** 시선·표정·자세 등 비언어 요소까지 `[MM:SS]` 타임스탬프로 지적
-- 답변 내용과 태도가 **불일치하는 지점**을 짚어냄
+| | 처음 (v1) | 최종 (v5) |
+|---|---|---|
+| 주제 질문에서 그 주제를 다룬 강의를 찾음 (Hit@3) | 0 / 9 | **14 / 14** |
+| 검색한 강의 문단이 피드백에 쓸모 있는 비율 (LLM-as-judge, 31쌍) | 31% | **55%** |
+| 실제 코치의 핵심 지적을 AI 피드백도 짚은 비율 | 55% | 52% |
+
+<p align="center"><img src="docs/judge_result.png" width="820" /></p>
+
+- 검색은 정답 기준 평가로 원인(모의면접 전사 혼입 · 임베딩 128토큰 한계)을 찾아 고쳤습니다 (아래 "v2"·"임베딩 비교")
+- 6건만 보고 짧고 부드럽게 고친 프롬프트가 31건 평가에서 코치 지적 재현율을 떨어뜨린 것(55% → 45%)을 찾아 되돌렸습니다 (51%) (아래 "LLM-as-judge")
+- 검색 근거가 31% → 55%로 좋아지는 동안 재현율은 51~52%에 머물렀습니다 → **다음 병목은 생성 단계**입니다.
 
 ---
 
-## 🧩 핵심 설계 — 데이터의 두 가지 역할
+## 🏗️ 구조 (최종 v5)
 
-이 프로젝트의 핵심은 두 데이터셋을 **서로 다른 목적**으로 나눠 쓴다는 점입니다.
+```
+[데이터 준비]  data_prep/whisper_전사_답변구간_자르기.ipynb · rag_v2.py · rag_v3.py
 
+ 유튜브 코칭 영상 ── Whisper(small, 한국어, 단어 단위 시간) 전사
+        ├─ 강의 영상 74개 ── 시간 표기 제거 · 300자 문장 경계 분할 ── 567청크
+        │                    └─ gemini-embedding-001 (RETRIEVAL_DOCUMENT) ── ChromaDB  interview_rag_v3
+        └─ 모의면접 피드백 영상 ── 피드백 시점 기준 ffmpeg로 답변 구간 자르기 ── 답변-피드백 31쌍
+                                   (Few-shot 예시 · 평가 정답)
+
+[서비스]  07_feedback_v3.ipynb
+
+ 면접 영상 ── Gemini 파일 업로드
+   ① Gemini: 답변 요약 + 검색용 질문 한 문장 작성          (pipeline_v3.rewrite_query 와 같은 방식)
+   ② 검색: 키워드(TF-IDF 문자 2~4gram) + Gemini 임베딩 순위 결합(RRF) → 강의 청크 4개   (rag_v3.py)
+   ③ 예시: 답변 요약과 비슷한 답변-피드백 5쌍 선택 (키워드 + MiniLM 순위 결합)          (pipeline_v3.py)
+   ④ Gemini(gemini-3.5-flash): 영상 + 예시 + 근거 + 프롬프트 규칙 → [MM:SS] 시간대별 피드백
+   ⑤ 업로드한 영상은 피드백 생성 후 서버에서 삭제
+```
+
+### 왜 데이터를 두 역할로 나눴나
 | 데이터 | 역할 | 해결하는 문제 |
 |---|---|---|
-| `data/feedback_data/` | **Few-Shot** | 이형 특유의 **어투·스타일** 학습 |
-| `data/rag_data/` | **RAG DB** | 이형 강의 기반 **지식·논리 근거** 확보 |
+| `data/feedback_data/` (모의면접 답변-피드백) | **Few-Shot 예시** | 코치 특유의 **말투·판단 방식** |
+| `data/rag_data/` (강의) | **RAG 근거** | 강의에 있는 **지식·논리 근거** |
 
-Few-Shot만 쓰면 말투는 비슷한데 내용이 얕고, RAG만 쓰면 내용은 맞는데 톤이 밋밋합니다.
-**둘을 같이 써야** "이형처럼 말하면서 이형처럼 근거 있는" 피드백이 나옵니다.
+Few-Shot만 쓰면 말투는 비슷한데 내용이 얕고, RAG만 쓰면 내용은 맞는데 코치의 판단 방식이 빠집니다. v1은 두 데이터가 한 DB에 섞여 있어 모의면접 전사가 근거로 검색됐고, v2부터 **강의 영상만** 참고자료로 씁니다.
 
 ---
 
-## 📈 튜닝 진행 과정
+## 🎬 실제 출력 예시 (v5, 영상 입력)
 
-| 단계 | 적용 | 결과 |
-|---|---|---|
-| 1 | Few-Shot only | 어투는 맞으나 내용이 피상적 |
-| 2 | **+ RAG** | 논리·근거 강화 |
-| 3 | **+ 프롬프트 엔지니어링** | 이형 스타일 규칙 9종 적용 |
-| 4 | **+ 타임스탬프 / 비언어 규칙** | 영상 분석 대응 (최종) |
+예시에 쓰지 않은 공개 모의면접 영상 1개(연구개발 직무 1분 자기소개)로 `07_feedback_v3.ipynb`의 영상 입력을 실행한 결과입니다 (`gemini-3.5-flash`). 영상과 전체 출력은 저작권·실명 때문에 올리지 않고 발췌만 남깁니다.
+
+- **검색용 질문** (①): 면접 자기소개에서 추상적인 인성적 강점 대신 직무 역량과 구체적 성과를 효과적으로 어필하는 피드백 방법은 무엇인가요?
+- **검색된 강의** (②): 준비 안하면 면접 광탈하는 질문 5개 · 필살기 Step 2: 성공경험 · 면접관이 밝히는, 떨지 않는 면접준비 · 입사 후 포부 작성법
+- **피드백 발췌** (④):
+  > [00:11]부터 첫 번째 강점으로 '책임감'을 제시하며 어릴 적 빨래와 청소를 하고 용돈을 받았던 가정교육 이야기를 들고 나왔습니다. (…)
+  > [00:37]부터 언급한 두 번째 강점인 '소통 능력' 또한 마찬가지입니다. (…) [00:40 - 00:54] 구간에서 지원자의 비언어적 태도를 보면 시선이 내리깔리거나 불안정하게 흔들리고, 경직된 자세와 단조로운 어조를 유지하고 있습니다. (…)
+  > 본인이 주도했던 연구, 실험, 공모전, 혹은 전공 프로젝트 중 하나를 선택하여 어떤 기술적 문제를 해결하고 어떤 성과(성능 개선율, 수치화된 결과 등)를 냈는지를 첫 문장부터 명확히 던지는 방식으로 자기소개 구조를 재설계해야 합니다.
+
+---
+
+## 🛠️ 기술 스택 (최종)
+
+| 구성 요소 | 기술 |
+|---|---|
+| **STT** | openai-whisper `small` (한국어, 단어 단위 시간) · ffmpeg (답변 구간 자르기) |
+| **생성** | Gemini API `gemini-3.5-flash` (영상 입력, `google-genai`) |
+| **임베딩** | `gemini-embedding-001` (문서/질문 구분: RETRIEVAL_DOCUMENT / RETRIEVAL_QUERY) |
+| **검색** | ChromaDB + TF-IDF 키워드 검색, 순위 결합 RRF(k=60) |
+| **예시 선택** | TF-IDF + `paraphrase-multilingual-MiniLM-L12-v2` 순위 결합 |
+| **평가** | 정답 기준 검색 평가(Hit@k) · LLM-as-judge (`claude-sonnet-4-6`, 사람이 확인한 코치 핵심 지적 78개 기준) |
+
+---
+
+## 🚀 빠른 시작
+
+```bash
+git clone https://github.com/whdyddls4276/interview_coach.git
+cd interview_coach
+pip install -r requirements.txt
+cp .env.example .env      # .env 에 GOOGLE_API_KEY 입력 (LLM-as-judge 재실행 시 ANTHROPIC_API_KEY도)
+```
+
+```
+07_feedback_v3.ipynb  →  '텍스트 입력'의 ANSWER 또는 '영상 입력'의 VIDEO_PATH 수정 후 실행
+                         (처음 실행 시 Gemini 임베딩으로 interview_rag_v3 구축, 약 $0.02)
+```
+
+> API 키는 코드에 직접 넣지 마세요. `.gitignore`에 `.env`가 포함되어 있습니다.
 
 ---
 
@@ -170,85 +231,49 @@ MiniLM은 128토큰까지만 읽어 강의 DB 청크의 89%가 잘려 있었습�
 
 ---
 
-## 🏗️ 시스템 아키텍처
-
-```
-   면접 영상 (.mp4)  또는  답변 텍스트
-              │
-              ▼
-   ┌──────────────────────┐
-   │  Gemini File API     │  영상 업로드 → 음성·표정·자세 직접 인식
-   └──────────┬───────────┘  (별도 STT 불필요)
-              │
-              ▼  키워드 추출
-   ┌──────────────────────┐
-   │      ChromaDB        │  paraphrase-multilingual-MiniLM-L12-v2
-   │   786 chunks (RAG)   │  → 관련 청크 Top-4 검색
-   └──────────┬───────────┘
-              │
-              ▼
-   ┌────────────────────────────────────┐
-   │   Few-Shot (Q./A. 형식) 5쌍         │  ← feedback_data
-   │   + RAG 참고자료 4청크               │  ← rag_data
-   │   + 영상 파일                        │
-   │   + 시스템 프롬프트 (이형 스타일 규칙) │
-   └──────────────┬─────────────────────┘
-                  │
-                  ▼
-        gemini-3.1-pro-preview
-                  │
-                  ▼
-    [MM:SS] 타임스탬프 기반 이형 스타일 피드백
-```
-
----
-
 ## 🗂️ 프로젝트 구조
 
 ```
 interview-coach/
 │
-├── 01_rag_build.ipynb          RAG 지식베이스 구축 → chroma_db/ (786청크)
-├── 01b_chunk_experiment.py     청킹 파라미터 비교 실험 (200/300/500)
-├── 02_eval_pipeline.ipynb      자동 평가 (LLM-as-judge, 6개 메트릭)
-├── 03_feedback.ipynb           초기 버전 — RAG only
-├── 04_fewshot_feedback.ipynb   RAG + Few-Shot (텍스트 입력, v1 · 예시 데이터 버그 있음)
-├── 05_video_feedback.ipynb     RAG + Few-Shot + 영상 (멀티모달, v1 · 예시 데이터 버그 있음)
-├── 06_feedback_v2.ipynb        v4 — 강의 DB + 질의 정제·하이브리드 검색(MiniLM) + 비슷한 답변 예시 + 발표 프롬프트 (영상·텍스트)
-├── 07_feedback_v3.ipynb        ⭐ 최종 (v5) — 06과 같고 검색 임베딩만 Gemini (영상·텍스트)
-├── rag_v2.py                   v2 참고자료 DB 구축 + 키워드·임베딩(MiniLM) 결합 검색
-├── rag_v3.py                   v3 참고자료 DB — 같은 청크, Gemini 임베딩(gemini-embedding-001)
-├── prompts_v2.py               시스템 프롬프트 v1(비교용) / v2
-├── eval_v2.py                  v1 vs v2 검색·생성 평가 → eval_results_v2/
-├── pipeline_v3.py              v3 — 질의 정제 + 비슷한 답변 예시 고르기
-├── eval_v3.py · eval_full.py · eval_v4.py   버전별 피드백 생성 (6건 / 31쌍)
-├── judge_v2.py · judge_v3.py · judge_full.py   LLM-as-judge 판정 (Claude)
+├── 07_feedback_v3.ipynb        ⭐ 최종 (v5) — 강의 DB + 질의 정제 + 키워드·Gemini 임베딩 결합 검색 + 비슷한 답변 예시 (영상·텍스트)
+├── 06_feedback_v2.ipynb        v4 — 07과 같고 검색 임베딩만 MiniLM
+├── rag_v3.py                   v3 참고자료 DB — 강의 567청크, Gemini 임베딩(gemini-embedding-001) + 키워드 결합 검색
+├── rag_v2.py                   v2 참고자료 DB 구축(Whisper 시간 표기 제거·청킹) + 키워드·임베딩(MiniLM) 결합 검색
+├── pipeline_v3.py              질의 정제 + 비슷한 답변 예시 고르기
+├── embed_gemini.py             Gemini 임베딩 API 호출 (배치)
+├── prompts_v2.py               시스템 프롬프트 v1(최종에 사용) / v2(비교용)
+├── eval_v2.py                  검색(정답 강의 Hit@k)·생성 평가 → eval_results_v2/
+├── eval_v3.py · eval_full.py · eval_v4.py · eval_v5.py   버전별 피드백 생성 (6건 / 31쌍)
 ├── judge_gold.py · judge_gold_full.py   판정 정답(코치 핵심 지적) 초안 → 사람 확인
-├── gemini_튜닝.ipynb            Gemini 파인튜닝 실험
+├── judge_v2.py · judge_v3.py · judge_full.py   LLM-as-judge 판정
+├── judge_unsupported.py        정답 없이 지어냄만 다시 판정 (판정 검토용)
+├── embed_compare.py            임베딩 모델 비교 (MiniLM / gemini-embedding-001 / -2)
+├── docs/                       README 그림
 │
 ├── data/
-│   ├── rag_data/               RAG DB용 — 이형 강의 정리 (74개, v1은 1~5의 51개)
-│   ├── feedback_data/          Few-Shot용 — 답변·피드백 쌍 (97개)
-│   └── finetune/               파인튜닝 데이터셋 (jsonl)
+│   ├── rag_data/               RAG 근거 — 강의 영상 Whisper 전사 (74개, v1은 1~5의 51개)
+│   ├── feedback_data/          Few-Shot 예시·평가 정답 — 모의면접 답변·코치 피드백 전사 (31쌍)
+│   └── finetune/               파인튜닝 데이터셋 (jsonl, 기록용)
 │
 ├── data_prep/
-│   └── LLM용JSON.ipynb          파인튜닝 데이터 생성
+│   ├── whisper_전사_답변구간_자르기.ipynb   Whisper 전사(단어 단위 시간) · ffmpeg로 답변 구간 자르기
+│   └── LLM용JSON.ipynb          파인튜닝 데이터 생성 (기록용)
 │
-└── models/
-    ├── llm_comparison/         LLM 선정 비교 실험
-    │   ├── openAI_튜닝.ipynb
-    │   └── vertex_ai.ipynb
-    └── nonverbal/              비언어 분석 실험 (7종)
-        ├── whisper_test.ipynb  crepe_test.ipynb  silero_test.ipynb
-        ├── DeepFace.ipynb      표정분석.ipynb
-        └── 고개_각도_측정.ipynb  몸_움직임_측정.ipynb
+├── 01_rag_build.ipynb ~ 05_video_feedback.ipynb   v1 (과정 중 버전, 기록용 · 04·05는 예시 데이터 버그 있음)
+├── gemini_튜닝.ipynb            Gemini 파인튜닝 시도 (501, 기록용)
+└── models/                     과정 중 실험 (기록용)
+    ├── llm_comparison/         LLM 비교 (openAI_튜닝.ipynb, vertex_ai.ipynb)
+    └── nonverbal/              음성·표정·자세 단독 분석 시도
 ```
 
 ---
 
 ## 📦 데이터셋
 
-### RAG 지식베이스 — `data/rag_data/` (74개)
+### RAG 근거 — `data/rag_data/` (강의 영상 74개 → 567청크)
+강의 영상의 음성을 Whisper로 전사한 텍스트입니다. `rag_v2.load_chunks()`가 시간 표기와 단어 단위 줄을 지우고 300자(문장 경계, 겹침 50자)로 나눕니다.
+
 | 카테고리 | 파일 수 |
 |---|---|
 | 1. 핵심 역량(필살기) 구축 및 취업 전략 | 12 |
@@ -258,121 +283,43 @@ interview-coach/
 | 5. 면접 마인드셋 및 기본 태도 | 9 |
 | 6. 추가 강의 (v2에서 추가, 분류 전) | 23 |
 
-### Few-Shot 데이터 — `data/feedback_data/` (97개)
-실제 면접 인터뷰 텍스트와 그에 대한 이형 피드백이 **1:1로 매칭**된 쌍 데이터.
-`1~5` / `6~10` / `11~16` / `17~20` 그룹으로 구성.
+### Few-Shot 예시·평가 정답 — `data/feedback_data/` (31쌍)
+모의면접 영상을 피드백 시점 기준으로 잘라(ffmpeg) 지원자 답변과 코치 피드백을 각각 전사한 쌍입니다. 최종 코드(07)는 `1~5` / `6~10` / `11~16` 묶음에서 답변과 피드백이 모두 있는 31쌍을 읽습니다.
 ⚠️ `6~10/text/*인터뷰*.txt`는 답변(A.)과 코치 피드백(F.)이 한 파일에 섞여 있으니, 답변만 쓸 때는 `eval_v2.answers_only()`로 A 블록만 꺼내세요.
 
 ---
 
-## 🛠️ 기술 스택
+## 📌 다음 과제
 
-| 구성 요소 | 기술 |
-|---|---|
-| **LLM** | `gemini-3.1-pro-preview` (멀티모달·영상 입력) |
-| **벡터 DB** | ChromaDB 0.6.3 (로컬 영구 저장) |
-| **임베딩** | paraphrase-multilingual-MiniLM-L12-v2 (384차원) |
-| **청킹** | 300자 / overlap 50자, 문장 경계 분할 |
-| **영상 처리** | Gemini File API (STT 별도 불필요) |
-| **평가** | LLM-as-judge |
-| **비언어 실험** | Whisper / CREPE / Silero / DeepFace / MediaPipe |
+- **생성 단계 개선** — 검색 근거가 좋아져도 재현율이 51~52%에 머묾. 코치의 판단 기준을 예시에만 기대지 않도록 규칙화
+- **평가 개선** — 지적마다 "텍스트로 짚을 수 있음/없음"을 표시해 재현율 재계산 · 지어냄 판정 기준 좁히기 · 평가 방향만 따로 판정
+- 영상 입력 기준 평가 세트 만들기 (현재 평가는 텍스트 입력 기준)
 
 ---
 
-## 🚀 빠른 시작
+## 📜 기록: 과정 중 버전 (2026.02~03)
 
-### 1. 설치
-```bash
-git clone https://github.com/whdyddls4276/interview_coach.git
-cd interview_coach
-pip install -r requirements.txt
-cp .env.example .env      # .env 에 GOOGLE_API_KEY 입력
-```
+과정 중에는 Google AI Studio와 노트북(01~05)에서 예시 → 참고자료 → 프롬프트 규칙을 단계별로 더하며 결과를 비교했습니다. 아래는 그 기록이며, 최종 버전과 수치는 위 내용을 기준으로 합니다.
 
-### 2. RAG 지식베이스 구축 (최초 1회)
-```
-01_rag_build.ipynb 실행  →  chroma_db/ 생성 (786청크)
-```
+### 튜닝 진행 과정 (과정 중)
+| 단계 | 적용 | 결과 |
+|---|---|---|
+| 1 | Few-Shot only | 어투는 맞으나 내용이 피상적 |
+| 2 | + RAG | 논리·근거 강화 |
+| 3 | + 프롬프트 엔지니어링 | 코치 스타일 규칙 9종 적용 (`prompts_v2.SYSTEM_PROMPT_V1`로 최종에도 사용) |
+| 4 | + 타임스탬프 규칙 | 영상 입력 대응 |
 
-### 3. 피드백 받기
+### v1 구조 (04·05 노트북)
+면접 영상 → Gemini가 키워드 추출 → ChromaDB(영상 전사 33개, MiniLM, 786청크) Top-4 검색 → 무작위 Few-Shot 5쌍 + 근거 + 영상 + 프롬프트 → `gemini-3.1-pro-preview`. 모의면접 전사가 근거 DB에 섞여 있고 MiniLM이 청크 앞 128토큰만 읽어, 서로 다른 질문에도 같은 문단을 1위로 가져왔습니다 (위 v2 평가).
 
-**최종 (v5, 텍스트·영상)**
-```
-07_feedback_v3.ipynb  →  '텍스트 입력'의 ANSWER 또는 '영상 입력'의 VIDEO_PATH 수정 후 실행
-                         (처음 실행 시 Gemini 임베딩으로 interview_rag_v3 구축, 약 $0.02)
-```
-
-**v4 (MiniLM 검색)**
-```
-06_feedback_v2.ipynb  →  같은 방법
-```
-
-**v1 (기록용)**
-```
-04_fewshot_feedback.ipynb  →  STEP 5 에서 ANSWER 수정 후 실행 (텍스트)
-05_video_feedback.ipynb    →  STEP 5 에서 VIDEO_PATH 수정 후 실행 (영상)
-```
-
----
-
-## ⚠️ 모델 쿼터 안내
-
-`gemini-3.1-pro-preview` 는 **무료 등급 쿼터가 0**이라 결제가 활성화된 프로젝트에서만 호출됩니다.
-무료로 테스트하려면 노트북 STEP 1 에서 폴백 모델로 교체하세요:
-
-```python
-MODEL = 'gemini-3.1-pro-preview'
-# MODEL = 'gemini-2.5-flash'   # FALLBACK: 무료 등급 사용 가능
-```
-
-사용 가능한 모델 목록은 아래로 직접 확인할 수 있습니다:
-```python
-for m in client.models.list():
-    print(m.name)
-```
-
----
-
-## 🔐 API 키 설정
-
-`.env` 파일을 만들고 아래와 같이 입력하세요:
-```
-GOOGLE_API_KEY=your_google_api_key_here
-```
-> API 키는 절대 코드에 직접 넣지 마세요. `.gitignore` 에 `.env` 가 포함되어 있습니다.
-
----
-
-## 🔬 LLM 비교 실험
-
-`models/llm_comparison/` 에서 모델 선정을 위한 비교를 진행했습니다.
-
+### LLM 비교 실험 (`models/llm_comparison/`)
 | 모델 | 방식 | 결과 |
 |---|---|---|
-| Gemini 3.1 Pro | RAG + Few-Shot + 멀티모달 | ✅ **최종 채택** — 영상 직접 분석 가능 |
+| Gemini 3.1 Pro | RAG + Few-Shot + 영상 입력 | 과정 중 채택 — 영상 직접 분석 가능 |
 | GPT-4.1 mini | 파인튜닝 | 텍스트 한정, 영상 불가 |
-| Gemini Flash Lite | RAG + 프롬프트 | 무료지만 피드백 깊이 부족 |
+| Gemini Flash Lite | RAG + 프롬프트 | 피드백 깊이 부족 |
 
----
+`gemini-3.1-pro-preview`는 무료 등급 한도가 0이라, 과정 후 재구현·평가는 `gemini-3.5-flash`로 진행했습니다.
 
-## 📊 평가 메트릭
-
-`02_eval_pipeline.ipynb` 에서 측정하는 항목입니다.
-
-| 메트릭 | 설명 | 범위 |
-|---|---|---|
-| `factpunch` | 팩폭 한줄평의 날카로움 | 1–5 |
-| `analysis` | 시선 분석의 깊이 | 1–5 |
-| `prescription` | 처방전의 실천 가능성 | 1–5 |
-| `accuracy` | RAG 근거 활용도 | 1–5 |
-| `context_relevance` | 검색 청크 관련성 | 0–1 |
-| `keyword_hit_rate` | 핵심 키워드 포함율 | 0–1 |
-
----
-
-## 📌 향후 계획
-
-- [ ] `models/nonverbal/` 실험 모듈을 메인 파이프라인에 정식 통합
-- [ ] 웹 UI (Streamlit) 연동
-- [ ] RAG 데이터 확장 (현재 51개 → 목표 200개+)
-- [ ] 다중 질문 연속 면접 시뮬레이션
+### 과정 중 평가 메트릭 (`02_eval_pipeline.ipynb`)
+`factpunch`(한줄평 날카로움) · `analysis` · `prescription` · `accuracy` · `context_relevance` · `keyword_hit_rate` — 정답 없이 LLM이 1~5점을 매기는 방식이라, 과정 후에는 실제 코치 피드백을 정답으로 두는 평가(위 LLM-as-judge)로 바꿨습니다.

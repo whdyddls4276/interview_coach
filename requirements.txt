@@ -1,19 +1,21 @@
-# Core
-google-genai>=2.19.0
-chromadb==0.6.3
-sentence-transformers>=2.2.0
+# Core (최종 v5: 07_feedback_v3.ipynb)
+google-genai>=2.19.0           # Gemini 생성·임베딩·영상 업로드
+chromadb>=1.0                  # 1.5.8에서 확인 (chroma_db/는 레포에 없고 처음 실행 시 구축)
+sentence-transformers>=2.2.0   # 예시 선택(MiniLM), v4 검색
 python-dotenv>=1.0.0
-scikit-learn>=1.3.0          # rag_v2 키워드 검색(TF-IDF)
+scikit-learn>=1.3.0            # 키워드 검색(TF-IDF)
+numpy
 
-# Data
+# 데이터 준비 (data_prep/whisper_전사_답변구간_자르기.ipynb, ffmpeg 별도 설치)
+openai-whisper>=20231117       # 음성 STT
+
+# 평가 (LLM-as-judge 재실행 시)
+anthropic>=0.40.0
 rouge-score>=0.1.2
 
-# Nonverbal Analysis (선택)
-openai-whisper>=20231117       # 음성 STT
-deepface>=0.0.93               # 표정 분석
-mediapipe>=0.10.0              # 고개/자세 분석
-librosa>=0.10.0                # 음성 특징 추출
-crepe>=0.0.13                  # 음성 피치
-
-# Optional
-openai>=2.0.0                  # LLM 비교 실험용
+# 과정 중 실험 (기록용, 선택)
+deepface>=0.0.93
+mediapipe>=0.10.0
+librosa>=0.10.0
+crepe>=0.0.13
+openai>=2.0.0
